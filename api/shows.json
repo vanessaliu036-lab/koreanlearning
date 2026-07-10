@@ -1,0 +1,115 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-07-10",
+  "note": "每支影片都經本機 InnerTube ANDROID client 驗證有韓文字幕軌道(ko>=1)。Vercel 部署版目前被 YouTube datacenter IP 屏蔽,需改部署或加 proxy。",
+  "shows": [
+    {
+      "id": "daily-life-vlog",
+      "title": "韓文日常 Vlog",
+      "titleEn": "Daily Life Vlog",
+      "desc": "韓國 YouTuber 真實一天的隨手拍。學習最自然的口語、語助詞、生活節奏。",
+      "level": "A2-B1",
+      "videos": [
+        { "id": "0C8co301bak", "channel": "Korean Daily by Summer", "title": "Just Yapping About My Day", "dur": "12:23", "topic": "隨性聊天" },
+        { "id": "MY2pSvtbtAo", "channel": "Talk To Me In Korean", "title": "Korean Daily Life Vlog", "dur": "13:24", "topic": "一天日常" },
+        { "id": "Ve3tQ5TDImc", "channel": "Hayden Kim", "title": "Workday Vlog", "dur": "9:23", "topic": "上班 vlog" },
+        { "id": "0Qs86PNRdQc", "channel": "Hayden Kim", "title": "Morning Routine", "dur": "13:00", "topic": "早晨 routine" },
+        { "id": "GPkrrapmtpQ", "channel": "Korean Daily by Summer", "title": "Learn Korean with a Vlog", "dur": "7:08", "topic": "綜合 vlog" }
+      ]
+    },
+    {
+      "id": "convenience-store",
+      "title": "便利商店",
+      "titleEn": "Convenience Store",
+      "desc": "편의점 場景。學買東西、問價、選商品。購物動詞 + 數字 + 商品名。",
+      "level": "A1-A2",
+      "videos": [
+        { "id": "enBiypSlBqg", "channel": "Learn Korean Vibes", "title": "At the Convenience Store", "dur": "16:26", "topic": "便利商店對話" }
+      ]
+    },
+    {
+      "id": "shopping",
+      "title": "購物",
+      "titleEn": "Shopping",
+      "desc": "超市、百貨、Costco、Daiso 場景。學商品詞、付費、找零。",
+      "level": "A1-B1",
+      "videos": [
+        { "id": "a93Vt9c5G0Q", "channel": "Chan Korean", "title": "Supermarket Shopping", "dur": "10:16", "topic": "超市購物" },
+        { "id": "_APrSeV-95I", "channel": "Speak Korean with Juhee", "title": "Shopping Mall in Korea", "dur": "5:21", "topic": "百貨公司" },
+        { "id": "l9acy7bbTk4", "channel": "Minji Teaches Korean", "title": "Costco & Daiso Shopping", "dur": "28:04", "topic": "Costco + Daiso" },
+        { "id": "Gy_nMwa51nY", "channel": "Daily Korean with Jaerim", "title": "Korean Market Grocery", "dur": "13:42", "topic": "傳統市場" }
+      ]
+    },
+    {
+      "id": "cafe-restaurant",
+      "title": "咖啡店 / 餐廳",
+      "titleEn": "Cafe & Restaurant",
+      "desc": "카페 / 식당 場景。學點餐、問菜單、付款用語。",
+      "level": "A1-A2",
+      "videos": [
+        { "id": "ZVmBBKqhzAQ", "channel": "Storytime in Korean", "title": "Ordering Coffee at a Cafe", "dur": "7:00", "topic": "咖啡店點餐" },
+        { "id": "TNnqXeX7EIg", "channel": "Chan Korean", "title": "Cafe & Restaurant Vlog", "dur": "8:04", "topic": "咖啡 + 餐廳" }
+      ]
+    },
+    {
+      "id": "daily-conversation",
+      "title": "日常對話",
+      "titleEn": "Daily Conversation",
+      "desc": "短劇對話、Podcast、慢速口語。學敬語、平語、句型。",
+      "level": "A1-B2",
+      "videos": [
+        { "id": "PDB0OHnXAqY", "channel": "KoreanTalks", "title": "10 Short Korean Conversations", "dur": "32:38", "topic": "短對話 10 組" },
+        { "id": "HcSDDe0TD2U", "channel": "Everyday Korean", "title": "Easy Daily Conversation", "dur": "18:41", "topic": "日常對話 A1-A2" },
+        { "id": "SVK46gupAmE", "channel": "Learn Korean Podcast", "title": "Greeting People #1", "dur": "13:58", "topic": "打招呼" },
+        { "id": "S55JxIegcGc", "channel": "Everyday Korean", "title": "60 Min Daily Speaking Practice", "dur": "58:26", "topic": "60 分鐘口說練習" },
+        { "id": "yYeG9B8fuY8", "channel": "Learn Korean Vibes", "title": "Absolute Beginners Daily Life", "dur": "10:27", "topic": "新手日常 7 場景" },
+        { "id": "GpT4q4RIt2s", "channel": "Real Korean with Morning", "title": "How Koreans Really Talk with Friends", "dur": "11:46", "topic": "朋友聊天" }
+      ]
+    },
+    {
+      "id": "listening-practice",
+      "title": "聽力練習",
+      "titleEn": "Listening Practice",
+      "desc": "慢速韓文 + 中英字幕。練習聽寫、跟讀、語調。",
+      "level": "A1-B1",
+      "videos": [
+        { "id": "qlMmOiQPLsc", "channel": "Ria Korea", "title": "Slow Korean Vlog Super Easy", "dur": "6:47", "topic": "慢速 vlog" },
+        { "id": "ItU8SDt4pCE", "channel": "Learn Korean With Gillian", "title": "Listening Practice for Beginners", "dur": "12:42", "topic": "新手聽力" },
+        { "id": "NRcXaIUcEak", "channel": "Learn Korean with Hoya", "title": "Intermediate Listening Ep.1", "dur": "29:58", "topic": "中級聽力" },
+        { "id": "gwo2Bwc3_V0", "channel": "Daily Korean with Jaerim", "title": "Daily Routine Beginner", "dur": "15:36", "topic": "新手日常 routine" }
+      ]
+    },
+    {
+      "id": "podcast-vlog",
+      "title": "Podcast + Vlog",
+      "titleEn": "Podcast & Vlog",
+      "desc": "Podcast 風格 + 影像輔助。中級、自然語速。",
+      "level": "B1-B2",
+      "videos": [
+        { "id": "YMRh8rLnQ-M", "channel": "Koreansunflower", "title": "Korean Podcast with Vlog", "dur": "8:40", "topic": "Podcast vlog" }
+      ]
+    },
+    {
+      "id": "travel",
+      "title": "旅遊 / 在地",
+      "titleEn": "Travel & Local",
+      "desc": "釜山、歷史村落、觀光。學旅遊場景 + 文化詞彙。",
+      "level": "B1-B2",
+      "videos": [
+        { "id": "EMX-ov6in0g", "channel": "Delilah Kim", "title": "Busan Travel Vlog", "dur": "1:50", "topic": "釜山旅遊" },
+        { "id": "4IEiUvZ76m4", "channel": "Talk To Me In Korean", "title": "What Locals REALLY Say", "dur": "14:59", "topic": "韓國歷史村落" }
+      ]
+    },
+    {
+      "id": "youtuber-recommend",
+      "title": "YouTuber 推薦 + 學習法",
+      "titleEn": "Youtuber Picks",
+      "desc": "學習者視角:推薦頻道、學韓文方法、學習心得。",
+      "level": "B1+",
+      "videos": [
+        { "id": "XcTTxMWbRRM", "channel": "Korean with Sol", "title": "My Favorite Korean YouTubers", "dur": "14:35", "topic": "推薦 YouTuber" },
+        { "id": "YU7knK22bTw", "channel": "Korean with Miss Vicky", "title": "Vlog Without English Subs", "dur": "12:09", "topic": "無英字幕練聽" }
+      ]
+    }
+  ]
+}

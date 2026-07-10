@@ -81,7 +81,9 @@ module.exports = async (req, res) => {
   try {
     let player = null;
     let tracks = [];
+    let lastClient = "TVHTML5";
     for (const client of ["ANDROID", "WEB", "TVHTML5"]) {
+      lastClient = client;
       player = await innertubePlayer(v, client);
       tracks =
         (player &&
@@ -94,7 +96,17 @@ module.exports = async (req, res) => {
     if (!tracks.length) {
       return res
         .status(404)
-        .json({ error: "NO_CAPTIONS", message: "這部影片沒有任何字幕(含自動字幕),無法解析。" });
+        .json({
+          error: "NO_CAPTIONS",
+          message: "這部影片沒有任何字幕(含自動字幕),無法解析。",
+          debug: {
+            lastClient: lastClient,
+            hasPlayer: !!player,
+            playerStatus: player && player.playabilityStatus && player.playabilityStatus.status,
+            reason: player && player.playabilityStatus && player.playabilityStatus.reason,
+            captionsKeys: player && player.captions ? Object.keys(player.captions) : null,
+          }
+        });
     }
     const track = pickTrack(tracks);
     // 強制 fmt=json3: ANDROID baseUrl 預設帶 fmt=xml,把舊值拔掉再補

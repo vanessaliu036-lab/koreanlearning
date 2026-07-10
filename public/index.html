@@ -72,6 +72,25 @@ details summary{font-size:13px;color:var(--sub);cursor:pointer}
 .gex .exsrc{font-weight:700;color:var(--hl-ink)}
 .gex .exzh{color:var(--sub);margin-top:2px}
 .empty{color:var(--sub);text-align:center;padding:40px 10px;font-size:14.5px}
+.shows{margin-top:6px}
+.shows-h{font-size:14px;font-weight:700;color:var(--sub);margin:18px 4px 10px;display:flex;align-items:center;justify-content:space-between}
+.shows-h .shows-note{font-size:12px;font-weight:500;color:var(--sub);opacity:.7}
+.show-chip{border:1px solid var(--line);background:var(--card2);color:var(--ink);border-radius:18px;padding:6px 14px;font-size:13.5px;cursor:pointer;font-family:inherit;margin-right:6px;margin-bottom:6px;display:inline-block}
+.show-chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.show-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px 18px 14px;margin-bottom:12px}
+.show-card .sc-h{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+.show-card .sc-t{font-size:17px;font-weight:800;color:var(--pill-ink)}
+.show-card .sc-e{font-size:12px;color:var(--sub)}
+.show-card .sc-d{font-size:13.5px;color:var(--sub);margin-bottom:12px;line-height:1.55}
+.show-card .sc-l{display:inline-block;background:var(--pill);color:var(--pill-ink);font-size:12px;font-weight:700;border-radius:8px;padding:1px 9px;margin-right:6px}
+.vlist{display:flex;flex-direction:column;gap:8px}
+.vrow{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--card2);border:1px solid var(--line);border-radius:12px;cursor:pointer}
+.vrow:hover{background:#fff;border-color:var(--accent-soft)}
+.vrow .vr-i{flex:1;min-width:0}
+.vrow .vr-t{font-size:14px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vrow .vr-c{font-size:12px;color:var(--sub);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vrow .vr-d{font-size:12px;color:var(--pill-ink);font-weight:700;background:var(--hl);border-radius:8px;padding:2px 8px;flex-shrink:0}
+.vrow .vr-go{font-size:13px;color:var(--accent);font-weight:700;flex-shrink:0}
 @media (max-width:480px){.srcline{font-size:17.5px}.tabs{gap:18px;padding:12px 18px 0}}
 </style>
 </head>
@@ -99,6 +118,12 @@ details summary{font-size:13px;color:var(--sub);cursor:pointer}
       <div class="status" id="statusBox"></div>
       <div class="progressbar" id="pbar"><div id="pbarFill"></div></div>
     </div>
+
+    <div class="shows" id="showsWrap">
+      <div class="shows-h">節目清單<span class="shows-note" id="showsNote"></span></div>
+      <div id="showChips"></div>
+      <div id="showList"></div>
+    </div>
   </div>
 
   <div class="playerwrap" id="playerWrap"></div>
@@ -124,7 +149,63 @@ function setProgress(p){var bar=$("pbar");if(p<0){bar.className="progressbar";re
 function toSec(t){var p=String(t).split(":"),s=0,i;for(i=0;i<p.length;i++){s=s*60+(parseInt(p[i],10)||0);}return s;}
 function parseVideoId(u){if(!u)return null;var m=u.match(/(?:youtube\.com\/(?:watch\?[^#]*v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,15})/);return m?m[1]:null;}
 
-var STATE={videoId:null,data:null,playerFrame:null,curCard:null};
+var STATE={videoId:null,data:null,playerFrame:null,curCard:null,activeShow:null};
+
+/* ---------- 節目清單 ---------- */
+function loadShows(){
+  fetch("/api/shows").then(function(r){return r.json();}).then(function(j){
+    if(!j||!j.shows)return;
+    var chips=$("showChips"),list=$("showList"),note=$("showsNote");
+    note.textContent="共 "+j.shows.length+" 個節目 · "+countVideos(j.shows)+" 支影片";
+    var html='<button class="show-chip on" data-id="">全部</button>',i,s;
+    for(i=0;i<j.shows.length;i++){s=j.shows[i];html+='<button class="show-chip" data-id="'+esc(s.id)+'">'+esc(s.title)+"</button>";}
+    chips.innerHTML=html;
+    renderShowList(j.shows,"");
+    STATE.shows=j.shows;
+    chips.addEventListener("click",function(ev){
+      var b=ev.target,c=b.getAttribute&&b.getAttribute("data-id");
+      if(c===null)return;
+      var all=chips.querySelectorAll(".show-chip"),k;
+      for(k=0;k<all.length;k++)all[k].className="show-chip"+(all[k].getAttribute("data-id")===(c||"")?" on":"");
+      STATE.activeShow=c||null;
+      renderShowList(STATE.shows,c);
+    });
+  })["catch"](function(){});
+}
+function countVideos(shows){var n=0,i;for(i=0;i<shows.length;i++)n+=shows[i].videos.length;return n;}
+function renderShowList(shows,filterId){
+  var list=$("showList"),html="",i,j,s,v;
+  for(i=0;i<shows.length;i++){
+    s=shows[i];
+    if(filterId && s.id!==filterId) continue;
+    html+='<div class="show-card">';
+    html+='<div class="sc-h"><div class="sc-t">'+esc(s.title)+'</div><div class="sc-e">'+esc(s.titleEn||"")+"</div></div>";
+    html+='<div class="sc-d">'+esc(s.desc||"")+"</div>";
+    html+='<span class="sc-l">'+esc(s.level||"")+"</span>";
+    html+='<span class="sc-l" style="background:var(--accent-soft);color:var(--ink)">'+s.videos.length+" 支</span>";
+    html+='<div class="vlist" style="margin-top:12px">';
+    for(j=0;j<s.videos.length;j++){
+      v=s.videos[j];
+      html+='<div class="vrow" data-vid="'+esc(v.id)+'">';
+      html+='<div class="vr-i"><div class="vr-t">'+esc(v.title)+'</div><div class="vr-c">'+esc(v.topic||"")+" · "+esc(v.channel||"")+'</div></div>';
+      html+='<div class="vr-d">'+esc(v.dur||"")+"</div>";
+      html+='<div class="vr-go">解析 →</div></div>';
+    }
+    html+="</div></div>";
+  }
+  if(!html)html='<div class="empty">這個分類沒有影片。</div>';
+  list.innerHTML=html;
+}
+$("showList").addEventListener("click",function(ev){
+  var row=null,el=ev.target;
+  while(el&&el!==$("showList")){if(el.className==="vrow"){row=el;break;}el=el.parentNode;}
+  if(!row)return;
+  var vid=row.getAttribute("data-vid");
+  if(!vid)return;
+  $("inUrl").value="https://youtu.be/"+vid;
+  $("btnGo").click();
+  window.scrollTo({top:0,behavior:"smooth"});
+});
 
 /* ---------- 儲存 ---------- */
 function saveData(d){try{localStorage.setItem("vlp:"+d.videoId,JSON.stringify(d));}catch(e){}}
@@ -321,6 +402,7 @@ $("btnReset").addEventListener("click",function(){
   $("btnReset").style.display="none";$("btnGo").disabled=false;
   hideStatus();setProgress(-1);window.scrollTo(0,0);
 });
+loadShows();
 })();
 </script>
 </body>
