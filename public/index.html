@@ -376,20 +376,34 @@ $("btnGo").addEventListener("click",function(){
     setProgress(0.05);runPipeline(id,"",segs);return;
   }
 
-  setStatus("自動抓取字幕中…");setProgress(0.03);
-  fetch("/api/transcript?v="+id)
-  .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j};});})
-  .then(function(res){
-    if(!res.ok||!res.j.cues||!res.j.cues.length){
-      setStatus((res.j&&res.j.message)||"抓取字幕失敗。若影片完全沒有字幕,請展開下方備援手貼逐字稿。",true);
-      setProgress(-1);$("btnGo").disabled=false;return;
-    }
-    setStatus("已取得字幕("+(res.j.auto?"自動字幕/":"")+(res.j.lang||"")+","+res.j.cues.length+" 句),開始翻譯…");
-    setProgress(0.1);
-    runPipeline(id,res.j.title,res.j.cues);
-  })["catch"](function(e){
-    setStatus("連線失敗:"+e.message,true);setProgress(-1);$("btnGo").disabled=false;
-  });
+  setStatus("抓取字幕中…");setProgress(0.03);
+  // 優先: 離線快取 /captions/<id>.json (Vercel CDN, 隨時可達)
+  // Fallback: /api/transcript (打 YouTube InnerTube, 雲端環境常被 ban)
+  fetch("/captions/"+id+".json")
+    .then(function(r){return r.json().then(function(j){return{ok:r.ok,source:"cache",j:j};});})
+    ["catch"](function(){return{ok:false,source:"cache",j:null};})
+    .then(function(res){
+      if(res.ok&&res.j&&res.j.cues&&res.j.cues.length){
+        setStatus("已取得離線字幕("+(res.j.auto?"自動字幕/":"")+(res.j.lang||"")+","+res.j.cues.length+" 句),開始翻譯…");
+        setProgress(0.1);
+        runPipeline(id,res.j.title,res.j.cues);
+        return;
+      }
+      // fallback: 線上抓
+      return fetch("/api/transcript?v="+id)
+        .then(function(r){return r.json().then(function(j){return{ok:r.ok,source:"live",j:j};});})
+        .then(function(res2){
+          if(!res2.ok||!res2.j.cues||!res2.j.cues.length){
+            setStatus((res2.j&&res2.j.message)||"抓取字幕失敗。若影片完全沒有字幕,請展開下方備援手貼逐字稿。",true);
+            setProgress(-1);$("btnGo").disabled=false;return;
+          }
+          setStatus("已取得線上字幕("+(res2.j.auto?"自動字幕/":"")+(res2.j.lang||"")+","+res2.j.cues.length+" 句),開始翻譯…");
+          setProgress(0.1);
+          runPipeline(id,res2.j.title,res2.j.cues);
+        });
+    })["catch"](function(e){
+      setStatus("連線失敗:"+e.message,true);setProgress(-1);$("btnGo").disabled=false;
+    });
 });
 
 $("btnReset").addEventListener("click",function(){

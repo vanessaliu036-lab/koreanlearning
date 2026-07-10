@@ -78,6 +78,9 @@ module.exports = async (req, res) => {
   if (!/^[A-Za-z0-9_-]{6,15}$/.test(v)) {
     return res.status(400).json({ error: "INVALID_ID", message: "無效的影片 ID" });
   }
+  // === 雲端 fallback: 打 YouTube InnerTube ===
+  // 注意: Vercel / VPS 等雲端 datacenter IP 環境通常會被 YouTube 擋下
+  // 客戶端應優先試 GET /captions/<id>.json (靜態快取, 離線可用)
   try {
     let player = null;
     let tracks = [];
@@ -98,7 +101,8 @@ module.exports = async (req, res) => {
         .status(404)
         .json({
           error: "NO_CAPTIONS",
-          message: "這部影片沒有任何字幕(含自動字幕),無法解析。",
+          message: "這部影片沒有字幕,且離線快取也沒有。線上自動字幕抓取在雲端部署通常會被 YouTube 阻擋(datacenter IP),請用節目清單內已收錄的影片。",
+          offline: true,
           debug: {
             lastClient: lastClient,
             hasPlayer: !!player,
