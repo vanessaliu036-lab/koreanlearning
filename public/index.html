@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>影片語言學習解析器</title>
+<style>
+:root{
+  --bg:#efe9df; --card:#f7f3ec; --card2:#fbf8f3; --ink:#1a1d23; --sub:#5a4632;
+  --accent:#c05a2e; --accent-soft:#e8b39a; --pill:#f0c9b4; --pill-ink:#8a3d1a;
+  --hl:#f3d7c8; --hl-ink:#a03e14; --line:#e3dccf; --blue:#3a4fb5;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  background:var(--bg);color:var(--ink);font-size:16px;line-height:1.6}
+.app{max-width:760px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+.topbar{padding:14px 18px 10px;display:flex;align-items:center;gap:10px;position:sticky;top:0;background:var(--bg);z-index:30}
+.topbar .logo{width:34px;height:34px;border-radius:11px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0}
+.topbar h1{font-size:17px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar .reset{border:1px solid var(--line);background:var(--card2);color:var(--sub);border-radius:20px;padding:5px 13px;font-size:13px;cursor:pointer;display:none}
+.stage{padding:8px 18px 40px}
+.hero{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px 20px;margin-bottom:16px}
+.hero h2{font-size:20px;font-weight:800;color:var(--pill-ink);margin-bottom:6px}
+.hero p{font-size:14px;color:var(--sub);margin-bottom:16px}
+.field label{display:block;font-size:13px;font-weight:700;color:var(--sub);margin:14px 0 6px}
+.field input[type=text],.field textarea{width:100%;border:1.5px solid var(--line);border-radius:14px;background:#fff;padding:12px 14px;font-size:15px;color:var(--ink);font-family:inherit;outline:none}
+.field input[type=text]:focus,.field textarea:focus{border-color:var(--accent)}
+.field textarea{min-height:110px;resize:vertical;line-height:1.5}
+.btn{border:none;border-radius:24px;padding:13px 26px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--accent);color:#fff;margin-top:18px;width:100%}
+.btn:disabled{opacity:.5;cursor:default}
+details{margin-top:14px}
+details summary{font-size:13px;color:var(--sub);cursor:pointer}
+.status{margin-top:14px;font-size:14px;color:var(--pill-ink);display:none;background:var(--hl);border-radius:12px;padding:10px 14px}
+.status.err{background:#f6dcd6;color:#8a2a12}
+.status.show{display:block}
+.progressbar{height:6px;background:var(--line);border-radius:3px;margin-top:10px;overflow:hidden;display:none}
+.progressbar.show{display:block}
+.progressbar>div{height:100%;width:0%;background:var(--accent);border-radius:3px;transition:width .4s}
+.playerwrap{padding:0 18px;display:none}
+.playerwrap.show{display:block}
+.playerbox{position:relative;width:100%;padding-top:56.25%;border-radius:18px;overflow:hidden;background:#000;border:1px solid var(--line)}
+.playerbox iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.vtitle{padding:10px 22px 0;font-size:14px;font-weight:700;color:var(--sub);display:none}
+.vtitle.show{display:block}
+.tabs{display:none;gap:26px;padding:14px 22px 0;position:sticky;top:56px;background:var(--bg);z-index:20;border-bottom:1px solid var(--line)}
+.tabs.show{display:flex}
+.tab{font-size:16.5px;font-weight:700;color:var(--sub);padding-bottom:10px;cursor:pointer;border-bottom:3px solid transparent}
+.tab.on{color:var(--ink);border-bottom-color:var(--accent)}
+.panel{display:none;padding:14px 16px 90px}
+.panel.on{display:block}
+.subcard{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px 18px;margin-bottom:14px;cursor:pointer;border-left:5px solid transparent}
+.subcard.playing{border-left-color:var(--accent);background:var(--card2)}
+.subcard .thead{display:flex;align-items:center;margin-bottom:12px}
+.tstamp{background:var(--pill);color:var(--pill-ink);font-weight:700;font-size:14px;border-radius:10px;padding:4px 14px;letter-spacing:.5px}
+.srcline{font-size:19px;font-weight:700;line-height:1.9;word-break:break-word}
+.srcline .kw{background:var(--hl);color:var(--hl-ink);border-radius:14px;padding:2px 12px;margin:0 2px;display:inline-block;line-height:1.6}
+.zhline{margin-top:10px;font-size:15.5px;color:var(--sub)}
+.zhline .kwzh{color:var(--blue);font-weight:700}
+.vcard{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px 18px;margin-bottom:12px}
+.vword{font-size:20px;font-weight:800;color:var(--hl-ink)}
+.vread{font-size:13.5px;color:var(--sub);margin-left:8px}
+.vpos{display:inline-block;background:var(--pill);color:var(--pill-ink);font-size:12px;font-weight:700;border-radius:8px;padding:1px 9px;margin-left:8px;vertical-align:2px}
+.vmean{font-size:15.5px;margin-top:6px}
+.vex{margin-top:8px;font-size:14px;color:var(--sub);border-left:3px solid var(--accent-soft);padding-left:10px}
+.vex .exsrc{color:var(--ink);font-weight:600}
+.gcard{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:14px}
+.gnum{display:inline-flex;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px;font-weight:800;align-items:center;justify-content:center;margin-right:9px;vertical-align:-4px}
+.gpat{font-size:18px;font-weight:800}
+.gexp{margin-top:8px;font-size:15px;color:var(--sub)}
+.gex{margin-top:10px;background:var(--card2);border-radius:12px;padding:10px 14px;font-size:14.5px}
+.gex .exsrc{font-weight:700;color:var(--hl-ink)}
+.gex .exzh{color:var(--sub);margin-top:2px}
+.empty{color:var(--sub);text-align:center;padding:40px 10px;font-size:14.5px}
+@media (max-width:480px){.srcline{font-size:17.5px}.tabs{gap:18px;padding:12px 18px 0}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="logo">語</div>
+    <h1 id="titlebar">影片語言學習解析器</h1>
+    <button class="reset" id="btnReset">重新解析</button>
+  </div>
+
+  <div class="stage" id="stageInput">
+    <div class="hero">
+      <h2>貼上 YouTube 連結,一鍵生成學習字幕</h2>
+      <p>自動抓取字幕 → 逐句繁中翻譯 + 單字亮點 → 單字庫 + 文法重點。</p>
+      <div class="field">
+        <label>YouTube 連結</label>
+        <input type="text" id="inUrl" placeholder="https://youtu.be/..." autocomplete="off">
+      </div>
+      <button class="btn" id="btnGo">開始解析</button>
+      <details>
+        <summary>備援:手動貼逐字稿(僅在影片完全沒有字幕時使用)</summary>
+        <div class="field"><textarea id="inTranscript" placeholder="貼上含時間戳的逐字稿…"></textarea></div>
+      </details>
+      <div class="status" id="statusBox"></div>
+      <div class="progressbar" id="pbar"><div id="pbarFill"></div></div>
+    </div>
+  </div>
+
+  <div class="playerwrap" id="playerWrap"></div>
+  <div class="vtitle" id="vtitle"></div>
+  <div class="tabs" id="tabs">
+    <div class="tab on" data-p="pSub">雙語字幕</div>
+    <div class="tab" data-p="pVocab">單字庫</div>
+    <div class="tab" data-p="pGrammar">文法重點</div>
+  </div>
+  <div class="panel on" id="pSub"></div>
+  <div class="panel" id="pVocab"></div>
+  <div class="panel" id="pGrammar"></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function setStatus(m,e){var b=$("statusBox");b.className="status show"+(e?" err":"");b.textContent=m;}
+function hideStatus(){$("statusBox").className="status";}
+function setProgress(p){var bar=$("pbar");if(p<0){bar.className="progressbar";return;}bar.className="progressbar show";$("pbarFill").style.width=Math.round(p*100)+"%";}
+function toSec(t){var p=String(t).split(":"),s=0,i;for(i=0;i<p.length;i++){s=s*60+(parseInt(p[i],10)||0);}return s;}
+function parseVideoId(u){if(!u)return null;var m=u.match(/(?:youtube\.com\/(?:watch\?[^#]*v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,15})/);return m?m[1]:null;}
+
+var STATE={videoId:null,data:null,playerFrame:null,curCard:null};
+
+/* ---------- 儲存 ---------- */
+function saveData(d){try{localStorage.setItem("vlp:"+d.videoId,JSON.stringify(d));}catch(e){}}
+function loadData(id){try{var r=localStorage.getItem("vlp:"+id);return r?JSON.parse(r):null;}catch(e){return null;}}
+
+/* ---------- Claude ---------- */
+function callClaude(messages,maxTok,cb){
+  fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({messages:messages,max_tokens:maxTok||1600})})
+  .then(function(r){return r.json();})
+  .then(function(data){
+    var txt="",i;
+    if(data&&data.content){for(i=0;i<data.content.length;i++){if(data.content[i].type==="text")txt+=data.content[i].text;}}
+    if(!txt&&data&&data.message){cb(new Error(data.message),null);return;}
+    cb(null,txt);
+  })["catch"](function(e){cb(e,null);});
+}
+function parseJsonLoose(txt){
+  if(!txt)return null;
+  var c=txt.replace(/```json/g,"").replace(/```/g,"").replace(/^\s+|\s+$/g,"");
+  var a=c.indexOf("["),b=c.lastIndexOf("]"),oa=c.indexOf("{"),ob=c.lastIndexOf("}");
+  try{
+    if(a>-1&&b>a&&(oa===-1||a<oa))return JSON.parse(c.slice(a,b+1));
+    if(oa>-1&&ob>oa)return JSON.parse(c.slice(oa,ob+1));
+    return JSON.parse(c);
+  }catch(e){return null;}
+}
+
+/* ---------- 提示詞 ---------- */
+function buildSubPrompt(chunk){
+  var lines=[],i;
+  for(i=0;i<chunk.length;i++)lines.push((chunk[i].t||"?")+" | "+chunk[i].text);
+  return "你是語言學習字幕編輯。以下是影片逐字稿片段(格式:時間戳 | 原文),原文可能是韓文、日文、英文或其他語言,可能來自自動字幕(有錯字)。\n\n"+
+  "對每一行輸出 JSON 物件:\n"+
+  "- t: 時間戳(照抄)\n- src: 原文(修正明顯自動字幕錯誤,補上合理標點)\n- zh: 繁體中文翻譯(台灣用語,自然口語)\n"+
+  "- kw: 陣列,本句 1~2 個最值得學的關鍵字,每項 {w:必須與 src 中文字完全一致的字詞, m:必須是 zh 中出現的對應中文詞}。無合適則空陣列。\n\n"+
+  "只回傳 JSON 陣列,不要說明、不要 Markdown。\n\n"+lines.join("\n");
+}
+function buildVocabPrompt(allSrc){
+  return "以下是語言學習影片的原文逐字稿。請整理:\n"+
+  "1. vocab:12 個最值得初中級學習者背的單字/片語,每項 {w, r:發音(韓文羅馬拼音/日文假名/英文留空), pos:詞性(中文), m:繁中意思, ex:原文短例句, exzh:例句繁中翻譯}\n"+
+  "2. grammar:4 個影片中出現的重要文法句型,每項 {p:句型, e:繁中白話解釋(2句內), ex:原句或改寫例句, exzh:繁中翻譯}\n\n"+
+  '只回傳 JSON 物件 {"vocab":[...],"grammar":[...]},不要說明、不要 Markdown。\n\n逐字稿:\n'+allSrc.slice(0,7000);
+}
+
+/* ---------- 管線 ---------- */
+function chunkArr(a,n){var o=[],i;for(i=0;i<a.length;i+=n)o.push(a.slice(i,i+n));return o;}
+function runPipeline(videoId,title,cues){
+  var chunks=chunkArr(cues,10),results=[],idx=0,failed=0;
+  function nextChunk(){
+    if(idx>=chunks.length){doVocab();return;}
+    setStatus("翻譯字幕中… ("+(idx+1)+"/"+chunks.length+")");
+    callClaude([{role:"user",content:buildSubPrompt(chunks[idx])}],1600,function(err,txt){
+      var arr=err?null:parseJsonLoose(txt),i;
+      if(arr&&arr.length){for(i=0;i<arr.length;i++)results.push(arr[i]);}
+      else{failed++;for(i=0;i<chunks[idx].length;i++)results.push({t:chunks[idx][i].t,src:chunks[idx][i].text,zh:"(此段翻譯失敗)",kw:[]});}
+      idx++;setProgress(0.1+0.72*(idx/chunks.length));
+      setTimeout(nextChunk,200);
+    });
+  }
+  function doVocab(){
+    setStatus("整理單字庫與文法重點…");setProgress(0.86);
+    var all="",i;for(i=0;i<results.length;i++)all+=results[i].src+"\n";
+    callClaude([{role:"user",content:buildVocabPrompt(all)}],2000,function(err,txt){
+      var obj=err?null:parseJsonLoose(txt);
+      var data={videoId:videoId,title:title||"",subs:results,vocab:(obj&&obj.vocab)||[],grammar:(obj&&obj.grammar)||[]};
+      setProgress(1);
+      STATE.data=data;STATE.videoId=videoId;saveData(data);
+      hideStatus();setProgress(-1);
+      if(failed>0)setStatus("完成,但有 "+failed+" 段翻譯失敗,可按「重新解析」重跑。");
+      renderAll();
+    });
+  }
+  nextChunk();
+}
+
+/* ---------- 逐字稿前處理(手貼備援) ---------- */
+function preSegment(raw){
+  var lines=raw.split(/\r?\n/),out=[],cur=null,i,line,tm;
+  var tsRe=/^\s*(\d{1,2}:)?\d{1,2}:\d{2}\s*$/,tsIn=/^\s*((?:\d{1,2}:)?\d{1,2}:\d{2})\s+(.+)$/;
+  for(i=0;i<lines.length;i++){
+    line=lines[i];if(!line.replace(/\s/g,""))continue;
+    if(tsRe.test(line)){if(cur&&cur.text)out.push(cur);cur={t:line.replace(/\s/g,""),text:""};}
+    else{tm=line.match(tsIn);
+      if(tm){if(cur&&cur.text)out.push(cur);cur={t:tm[1],text:tm[2]};}
+      else{if(!cur)cur={t:"",text:""};cur.text+=(cur.text?" ":"")+line.replace(/^\s+|\s+$/g,"");}}
+  }
+  if(cur&&cur.text)out.push(cur);
+  return out;
+}
+
+/* ---------- 渲染 ---------- */
+function hlSrc(src,kw){var h=esc(src),i;if(kw)for(i=0;i<kw.length;i++){if(kw[i]&&kw[i].w&&h.indexOf(esc(kw[i].w))>-1)h=h.replace(esc(kw[i].w),'<span class="kw">'+esc(kw[i].w)+"</span>");}return h;}
+function hlZh(zh,kw){var h=esc(zh),i;if(kw)for(i=0;i<kw.length;i++){if(kw[i]&&kw[i].m&&h.indexOf(esc(kw[i].m))>-1)h=h.replace(esc(kw[i].m),'<span class="kwzh">'+esc(kw[i].m)+"</span>");}return h;}
+function renderAll(){
+  var d=STATE.data;
+  $("stageInput").style.display="none";
+  $("btnReset").style.display="inline-block";
+  $("tabs").className="tabs show";
+  if(d.title){var vt=$("vtitle");vt.className="vtitle show";vt.textContent=d.title;}
+  var pw=$("playerWrap");pw.className="playerwrap show";
+  pw.innerHTML='<div class="playerbox"><iframe id="ytFrame" src="https://www.youtube.com/embed/'+esc(d.videoId)+'?enablejsapi=1&playsinline=1" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>';
+  STATE.playerFrame=$("ytFrame");
+  var i,s,html="";
+  if(!d.subs||!d.subs.length)html='<div class="empty">沒有字幕資料。</div>';
+  else for(i=0;i<d.subs.length;i++){s=d.subs[i];
+    html+='<div class="subcard" data-t="'+esc(s.t||"")+'"><div class="thead"><span class="tstamp">'+esc(s.t||"--:--")+'</span></div>'+
+    '<div class="srcline">'+hlSrc(s.src,s.kw)+'</div><div class="zhline">'+hlZh(s.zh,s.kw)+"</div></div>";}
+  $("pSub").innerHTML=html;
+  var v,vh="";
+  if(!d.vocab||!d.vocab.length)vh='<div class="empty">單字庫整理失敗,可按「重新解析」重跑。</div>';
+  else for(i=0;i<d.vocab.length;i++){v=d.vocab[i];
+    vh+='<div class="vcard"><span class="vword">'+esc(v.w)+"</span>"+(v.r?'<span class="vread">'+esc(v.r)+"</span>":"")+(v.pos?'<span class="vpos">'+esc(v.pos)+"</span>":"")+
+    '<div class="vmean">'+esc(v.m)+"</div>"+(v.ex?'<div class="vex"><div class="exsrc">'+esc(v.ex)+"</div><div>"+esc(v.exzh||"")+"</div></div>":"")+"</div>";}
+  $("pVocab").innerHTML=vh;
+  var g,gh="";
+  if(!d.grammar||!d.grammar.length)gh='<div class="empty">文法重點整理失敗,可按「重新解析」重跑。</div>';
+  else for(i=0;i<d.grammar.length;i++){g=d.grammar[i];
+    gh+='<div class="gcard"><span class="gnum">'+(i+1)+'</span><span class="gpat">'+esc(g.p)+"</span>"+
+    '<div class="gexp">'+esc(g.e)+"</div>"+(g.ex?'<div class="gex"><div class="exsrc">'+esc(g.ex)+'</div><div class="exzh">'+esc(g.exzh||"")+"</div></div>":"")+"</div>";}
+  $("pGrammar").innerHTML=gh;
+  window.scrollTo(0,0);
+}
+
+/* ---------- 互動 ---------- */
+function seekTo(sec){
+  var f=STATE.playerFrame;if(!f||!f.contentWindow)return;
+  try{
+    f.contentWindow.postMessage(JSON.stringify({event:"command",func:"seekTo",args:[sec,true]}),"*");
+    f.contentWindow.postMessage(JSON.stringify({event:"command",func:"playVideo",args:[]}),"*");
+  }catch(e){}
+}
+document.addEventListener("click",function(ev){
+  var el=ev.target,card=null,tab=null;
+  while(el&&el!==document.body){
+    var cn=String(el.className||"");
+    if(cn==="tab"||cn==="tab on"){tab=el;break;}
+    if(cn.indexOf("subcard")>-1){card=el;break;}
+    el=el.parentNode;
+  }
+  if(tab){
+    var tabs=document.querySelectorAll(".tab"),panels=document.querySelectorAll(".panel"),i;
+    for(i=0;i<tabs.length;i++)tabs[i].className="tab";
+    for(i=0;i<panels.length;i++)panels[i].className="panel";
+    tab.className="tab on";$(tab.getAttribute("data-p")).className="panel on";return;
+  }
+  if(card){
+    var t=card.getAttribute("data-t");if(t)seekTo(toSec(t));
+    if(STATE.curCard)STATE.curCard.className="subcard";
+    card.className="subcard playing";STATE.curCard=card;
+  }
+});
+
+/* ---------- 主流程 ---------- */
+$("btnGo").addEventListener("click",function(){
+  hideStatus();
+  var url=$("inUrl").value.replace(/^\s+|\s+$/g,"");
+  var id=parseVideoId(url);
+  if(!id){setStatus("請貼上有效的 YouTube 連結。",true);return;}
+  var cached=loadData(id);
+  if(cached&&cached.subs&&cached.subs.length){STATE.data=cached;STATE.videoId=id;renderAll();return;}
+  $("btnGo").disabled=true;
+
+  var manual=$("inTranscript").value;
+  if(manual.replace(/\s/g,"").length>=10){
+    var segs=preSegment(manual);
+    if(!segs.length){setStatus("逐字稿格式無法解析。",true);$("btnGo").disabled=false;return;}
+    setProgress(0.05);runPipeline(id,"",segs);return;
+  }
+
+  setStatus("自動抓取字幕中…");setProgress(0.03);
+  fetch("/api/transcript?v="+id)
+  .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j};});})
+  .then(function(res){
+    if(!res.ok||!res.j.cues||!res.j.cues.length){
+      setStatus((res.j&&res.j.message)||"抓取字幕失敗。若影片完全沒有字幕,請展開下方備援手貼逐字稿。",true);
+      setProgress(-1);$("btnGo").disabled=false;return;
+    }
+    setStatus("已取得字幕("+(res.j.auto?"自動字幕/":"")+(res.j.lang||"")+","+res.j.cues.length+" 句),開始翻譯…");
+    setProgress(0.1);
+    runPipeline(id,res.j.title,res.j.cues);
+  })["catch"](function(e){
+    setStatus("連線失敗:"+e.message,true);setProgress(-1);$("btnGo").disabled=false;
+  });
+});
+
+$("btnReset").addEventListener("click",function(){
+  STATE.data=null;STATE.curCard=null;
+  if(STATE.videoId){try{localStorage.removeItem("vlp:"+STATE.videoId);}catch(e){}}
+  $("stageInput").style.display="block";
+  $("playerWrap").className="playerwrap";$("tabs").className="tabs";$("vtitle").className="vtitle";
+  var panels=document.querySelectorAll(".panel"),i;
+  for(i=0;i<panels.length;i++)panels[i].innerHTML="";
+  $("btnReset").style.display="none";$("btnGo").disabled=false;
+  hideStatus();setProgress(-1);window.scrollTo(0,0);
+});
+})();
+</script>
+</body>
+</html>
