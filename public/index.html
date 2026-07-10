@@ -432,16 +432,15 @@ $("btnGo").addEventListener("click",function(){
   }
 
   setStatus("抓取字幕中…");setProgress(0.03);
-  // 優先: 離線快取 /captions/<id>.json (Vercel CDN, 隨時可達)
+  // 優先: 離線快取 /captions/<id>.json (Vercel CDN, 隨時可達, 含 ko + zh 兩組)
   // Fallback: /api/transcript (打 YouTube InnerTube, 雲端環境常被 ban)
   fetch("/captions/"+id+".json")
-    .then(function(r){return r.json().then(function(j){return{ok:r.ok,source:"cache",j:j};});})
-    ["catch"](function(){return{ok:false,source:"cache",j:null};})
+    .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j};});})
+    ["catch"](function(){return{ok:false,j:null};})
     .then(function(res){
-      if(res.ok&&res.j&&res.j.cues&&res.j.cues.length){
-        return translateAndRender(id,res.j.title,res.j.lang||"ko",res.j.cues,res.j.auto);
+      if(res.ok&&res.j&&res.j.koCues&&res.j.koCues.length){
+        return renderFromCache(id,res.j);
       }
-      // fallback: 線上抓
       return fetch("/api/transcript?v="+id)
         .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j};});})
         .then(function(res2){
@@ -449,52 +448,40 @@ $("btnGo").addEventListener("click",function(){
             setStatus((res2.j&&res2.j.message)||"抓取字幕失敗。若影片完全沒有字幕,請展開下方備援手貼逐字稿。",true);
             setProgress(-1);$("btnGo").disabled=false;return null;
           }
-          return translateAndRender(id,res2.j.title,res2.j.lang||"ko",res2.j.cues,res2.j.auto);
+          var data={videoId:id,title:res2.j.title||"",subs:res2.j.cues.map(function(c){return{t:c.t,src:c.text,zh:"",kw:[]};}),vocab:[],grammar:[]};
+          STATE.data=data;STATE.videoId=id;saveData(data);renderAll();
+          hideStatus();setProgress(-1);
         });
     })["catch"](function(e){
       setStatus("連線失敗:"+e.message,true);setProgress(-1);$("btnGo").disabled=false;
     });
 });
 
-/* ---------- 免費翻譯: 用 YouTube tlang 拿繁中, 不花 API 錢 ---------- */
-function translateAndRender(videoId,title,srcLang,srcCues,auto){
-  setStatus("用 YouTube 官方翻譯轉繁中…");setProgress(0.3);
-  fetch("/api/translate?lang=zh-Hant&v="+videoId)
-    .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j};});})
-    .then(function(res){
-      if(!res.ok||!res.j.cues||!res.j.cues.length){
-        // 翻譯失敗 → 改用原文(無中文)
-        var data=buildFinalData(videoId,title,srcCues.map(function(c){return{t:c.t,src:c.text,zh:"",kw:[]};}),true);
-        renderAll();
-        setStatus("已取得 "+srcCues.length+" 句原文(繁中翻譯失敗,雲端環境常見,可按「重新解析」或用節目清單內已預翻的影片)。");
-        return;
-      }
-      // 對齊: 用 tMs 做 closest match (翻譯軌道時間軸可能跟來源略偏)
-      var transCues=res.j.cues;
-      var aligned=alignCues(srcCues,transCues);
-      var data=buildFinalData(videoId,title,aligned,false);
-      renderAll();
-      setStatus("已對齊 "+aligned.length+" 句(來源:"+srcLang+", 翻譯:"+res.j.targetLang+", "+(res.j.translated?"YouTube 官方翻譯":"來源已是中文")+")");
-    })["catch"](function(e){
-      // fallback: 沒翻譯就用原文
-      var data=buildFinalData(videoId,title,srcCues.map(function(c){return{t:c.t,src:c.text,zh:"",kw:[]};}),true);
-      renderAll();
-      setStatus("翻譯取得失敗(用原文顯示):"+e.message);
-    });
+/* ---------- 離線字幕: ko + zh 兩組對齊後直接 render ---------- */
+function renderFromCache(videoId,d){
+  // 對齊 koCues + zhCues (用 tMs closest match)
+  var aligned=alignCues(d.koCues,d.zhCues||[]);
+  var data={videoId:videoId,title:d.title||"",subs:aligned,vocab:[],grammar:[]};
+  STATE.data=data;STATE.videoId=videoId;saveData(data);
+  renderAll();
+  var hasZh=aligned.some(function(s){return s.zh;});
+  setStatus("離線字幕 "+aligned.length+" 句"+(hasZh?"(含 YouTube 繁中)":"(僅原文,無繁中翻譯)"));
 }
 function alignCues(src,trans){
   // 來源 cues 有 tMs, trans cues 也有 tMs; 用 closest match
+  // src[i]: {t, tMs, text} (新 harvest 格式) 或 {t, text} (舊/線上格式)
+  // trans[i]: {tMs, text}
   var out=[],j=0;
   for(var i=0;i<src.length;i++){
-    var sm=toMs(src[i].t||"0:00");
-    // 找 trans 中 tMs 最接近 sm 的
+    var s=src[i];
+    var sm=s.tMs!=null?s.tMs:toMs(s.t||"0:00");
     var best="",bestDiff=99999999;
     while(j<trans.length&&trans[j].tMs<sm){j++;}
     for(var k=Math.max(0,j-1);k<Math.min(trans.length,j+2);k++){
       var d=Math.abs(trans[k].tMs-sm);
       if(d<bestDiff){bestDiff=d;best=trans[k].text;}
     }
-    out.push({t:src[i].t,src:src[i].text,zh:best||"",kw:[]});
+    out.push({t:s.t,src:s.text,zh:best||"",kw:[]});
   }
   return out;
 }
