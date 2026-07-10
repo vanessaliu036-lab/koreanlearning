@@ -130,8 +130,6 @@ details summary{font-size:13px;color:var(--sub);cursor:pointer}
   <div class="vtitle" id="vtitle"></div>
   <div class="tabs" id="tabs">
     <div class="tab on" data-p="pSub">雙語字幕</div>
-    <div class="tab" data-p="pVocab">單字庫</div>
-    <div class="tab" data-p="pGrammar">文法重點</div>
   </div>
   <div class="panel on" id="pSub"></div>
   <div class="panel" id="pVocab"></div>
@@ -328,6 +326,63 @@ function renderAll(){
     '<div class="gexp">'+esc(g.e)+"</div>"+(g.ex?'<div class="gex"><div class="exsrc">'+esc(g.ex)+'</div><div class="exzh">'+esc(g.exzh||"")+"</div></div>":"")+"</div>";}
   $("pGrammar").innerHTML=gh;
   window.scrollTo(0,0);
+  startSync();
+}
+
+/* ---------- 影片時間 ↔ 字幕卡自動同步 ---------- */
+function startSync(){
+  if(STATE.syncTimer)clearInterval(STATE.syncTimer);
+  var subs=STATE.data&&STATE.data.subs;
+  if(!subs||!subs.length)return;
+  // 預先把所有 t (mm:ss) 轉成秒, 排序方便二分搜
+  var idx=[];
+  for(var i=0;i<subs.length;i++)idx.push({i:i,t:toSec(subs[i].t||"0:00")});
+  idx.sort(function(a,b){return a.t-b.t;});
+  STATE.syncIdx=idx;
+  STATE.syncTimer=setInterval(function(){
+    var f=STATE.playerFrame;if(!f||!f.contentWindow)return;
+    try{
+      f.contentWindow.postMessage(JSON.stringify({event:"command",func:"getCurrentTime",args:[]}),"*");
+    }catch(e){}
+  },700);
+}
+// 監聽 YouTube iframe 回的 getCurrentTime
+window.addEventListener("message",function(ev){
+  if(!ev||!ev.data)return;
+  var s=String(ev.data);
+  // YT 回的多種格式: '...{"currentTime":12.34,...}' 或單純數字
+  var m=s.match(/"currentTime"\s*:\s*([0-9.]+)/);
+  if(!m){
+    // 舊式: 純數字
+    var n=parseFloat(s);
+    if(!isNaN(n)&&n>=0&&s.indexOf("currentTime")===-1){
+      syncToTime(n);
+    }
+    return;
+  }
+  syncToTime(parseFloat(m[1]));
+});
+function syncToTime(t){
+  var idx=STATE.syncIdx;if(!idx)return;
+  // 找最大 t <= now
+  var lo=0,hi=idx.length-1,cur=-1;
+  while(lo<=hi){
+    var mid=(lo+hi)>>1;
+    if(idx[mid].t<=t){cur=mid;lo=mid+1;}
+    else hi=mid-1;
+  }
+  if(cur<0)return;
+  var cardIdx=idx[cur].i;
+  var cards=document.querySelectorAll("#pSub .subcard");
+  if(!cards[cardIdx]||cards[cardIdx]===STATE.curCard)return;
+  if(STATE.curCard)STATE.curCard.className="subcard";
+  var c=cards[cardIdx];
+  c.className="subcard playing";STATE.curCard=c;
+  // 自動捲動到畫面中間
+  var rect=c.getBoundingClientRect();
+  if(rect.top<80||rect.bottom>window.innerHeight-40){
+    c.scrollIntoView({behavior:"smooth",block:"center"});
+  }
 }
 
 /* ---------- 互動 ---------- */
@@ -384,30 +439,79 @@ $("btnGo").addEventListener("click",function(){
     ["catch"](function(){return{ok:false,source:"cache",j:null};})
     .then(function(res){
       if(res.ok&&res.j&&res.j.cues&&res.j.cues.length){
-        setStatus("已取得離線字幕("+(res.j.auto?"自動字幕/":"")+(res.j.lang||"")+","+res.j.cues.length+" 句),開始翻譯…");
-        setProgress(0.1);
-        runPipeline(id,res.j.title,res.j.cues);
-        return;
+        return translateAndRender(id,res.j.title,res.j.lang||"ko",res.j.cues,res.j.auto);
       }
       // fallback: 線上抓
       return fetch("/api/transcript?v="+id)
-        .then(function(r){return r.json().then(function(j){return{ok:r.ok,source:"live",j:j};});})
+        .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j};});})
         .then(function(res2){
           if(!res2.ok||!res2.j.cues||!res2.j.cues.length){
             setStatus((res2.j&&res2.j.message)||"抓取字幕失敗。若影片完全沒有字幕,請展開下方備援手貼逐字稿。",true);
-            setProgress(-1);$("btnGo").disabled=false;return;
+            setProgress(-1);$("btnGo").disabled=false;return null;
           }
-          setStatus("已取得線上字幕("+(res2.j.auto?"自動字幕/":"")+(res2.j.lang||"")+","+res2.j.cues.length+" 句),開始翻譯…");
-          setProgress(0.1);
-          runPipeline(id,res2.j.title,res2.j.cues);
+          return translateAndRender(id,res2.j.title,res2.j.lang||"ko",res2.j.cues,res2.j.auto);
         });
     })["catch"](function(e){
       setStatus("連線失敗:"+e.message,true);setProgress(-1);$("btnGo").disabled=false;
     });
 });
 
+/* ---------- 免費翻譯: 用 YouTube tlang 拿繁中, 不花 API 錢 ---------- */
+function translateAndRender(videoId,title,srcLang,srcCues,auto){
+  setStatus("用 YouTube 官方翻譯轉繁中…");setProgress(0.3);
+  fetch("/api/translate?lang=zh-Hant&v="+videoId)
+    .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j};});})
+    .then(function(res){
+      if(!res.ok||!res.j.cues||!res.j.cues.length){
+        // 翻譯失敗 → 改用原文(無中文)
+        var data=buildFinalData(videoId,title,srcCues.map(function(c){return{t:c.t,src:c.text,zh:"",kw:[]};}),true);
+        renderAll();
+        setStatus("已取得 "+srcCues.length+" 句原文(繁中翻譯失敗,雲端環境常見,可按「重新解析」或用節目清單內已預翻的影片)。");
+        return;
+      }
+      // 對齊: 用 tMs 做 closest match (翻譯軌道時間軸可能跟來源略偏)
+      var transCues=res.j.cues;
+      var aligned=alignCues(srcCues,transCues);
+      var data=buildFinalData(videoId,title,aligned,false);
+      renderAll();
+      setStatus("已對齊 "+aligned.length+" 句(來源:"+srcLang+", 翻譯:"+res.j.targetLang+", "+res.j.translated?"YouTube 官方翻譯":"來源已是中文")+")");
+    })["catch"](function(e){
+      // fallback: 沒翻譯就用原文
+      var data=buildFinalData(videoId,title,srcCues.map(function(c){return{t:c.t,src:c.text,zh:"",kw:[]};}),true);
+      renderAll();
+      setStatus("翻譯取得失敗(用原文顯示):"+e.message);
+    });
+}
+function alignCues(src,trans){
+  // 來源 cues 有 tMs, trans cues 也有 tMs; 用 closest match
+  var out=[],j=0;
+  for(var i=0;i<src.length;i++){
+    var sm=toMs(src[i].t||"0:00");
+    // 找 trans 中 tMs 最接近 sm 的
+    var best="",bestDiff=99999999;
+    while(j<trans.length&&trans[j].tMs<sm){j++;}
+    for(var k=Math.max(0,j-1);k<Math.min(trans.length,j+2);k++){
+      var d=Math.abs(trans[k].tMs-sm);
+      if(d<bestDiff){bestDiff=d;best=trans[k].text;}
+    }
+    out.push({t:src[i].t,src:src[i].text,zh:best||"",kw:[]});
+  }
+  return out;
+}
+function toMs(t){
+  var p=String(t).split(":"),s=0,i;for(i=0;i<p.length;i++){s=s*60+(parseInt(p[i],10)||0);}return s*1000;
+}
+function buildFinalData(videoId,title,subs,fallback){
+  // localStorage 存一份加速二次開啟
+  var data={videoId:videoId,title:title||"",subs:subs,vocab:[],grammar:[],source:fallback?"no-translate":"youtube-translate"};
+  STATE.data=data;STATE.videoId=videoId;saveData(data);
+  hideStatus();setProgress(1);setProgress(-1);
+  return data;
+}
+
 $("btnReset").addEventListener("click",function(){
-  STATE.data=null;STATE.curCard=null;
+  if(STATE.syncTimer){clearInterval(STATE.syncTimer);STATE.syncTimer=null;}
+  STATE.data=null;STATE.curCard=null;STATE.syncIdx=null;
   if(STATE.videoId){try{localStorage.removeItem("vlp:"+STATE.videoId);}catch(e){}}
   $("stageInput").style.display="block";
   $("playerWrap").className="playerwrap";$("tabs").className="tabs";$("vtitle").className="vtitle";
