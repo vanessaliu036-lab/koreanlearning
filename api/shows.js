@@ -6,7 +6,7 @@ module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Cache-Control", "public, max-age=300");
   try {
-    const fp = path.join(__dirname, "shows.json");
+    const fp = path.join(__dirname, "shows-data.json");
     const data = JSON.parse(fs.readFileSync(fp, "utf8"));
     res.status(200).json(data);
   } catch (e) {
