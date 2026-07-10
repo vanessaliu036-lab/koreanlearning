@@ -474,7 +474,7 @@ function translateAndRender(videoId,title,srcLang,srcCues,auto){
       var aligned=alignCues(srcCues,transCues);
       var data=buildFinalData(videoId,title,aligned,false);
       renderAll();
-      setStatus("已對齊 "+aligned.length+" 句(來源:"+srcLang+", 翻譯:"+res.j.targetLang+", "+res.j.translated?"YouTube 官方翻譯":"來源已是中文")+")");
+      setStatus("已對齊 "+aligned.length+" 句(來源:"+srcLang+", 翻譯:"+res.j.targetLang+", "+(res.j.translated?"YouTube 官方翻譯":"來源已是中文")+")");
     })["catch"](function(e){
       // fallback: 沒翻譯就用原文
       var data=buildFinalData(videoId,title,srcCues.map(function(c){return{t:c.t,src:c.text,zh:"",kw:[]};}),true);
