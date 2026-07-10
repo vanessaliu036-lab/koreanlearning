@@ -97,7 +97,9 @@ module.exports = async (req, res) => {
         .json({ error: "NO_CAPTIONS", message: "這部影片沒有任何字幕(含自動字幕),無法解析。" });
     }
     const track = pickTrack(tracks);
-    const capUrl = track.baseUrl + (track.baseUrl.includes("fmt=") ? "" : "&fmt=json3");
+    // 強制 fmt=json3: ANDROID baseUrl 預設帶 fmt=xml,把舊值拔掉再補
+    let capUrl = track.baseUrl.replace(/([?&])fmt=[^&]*/g, "");
+    capUrl += (capUrl.includes("?") ? "&" : "?") + "fmt=json3";
     const capRes = await fetch(capUrl, { headers: { "User-Agent": UA_WEB } });
     if (!capRes.ok) throw new Error("caption fetch " + capRes.status);
     const cap = await capRes.json();
